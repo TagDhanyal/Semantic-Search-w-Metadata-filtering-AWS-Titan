@@ -46,32 +46,25 @@ for idx, url in enumerate(urls):
 # Preprocess the PDF documents by removing the first three pages and saving the remaining pages to a new PDF file
 local_pdfs = glob.glob(data_root + '*.pdf')
 
-for local_pdf in local_pdfs:
-    pdf_reader = PdfReader(local_pdf)
-    pdf_writer = PdfWriter()
-
-    # Remove the first three pages of the PDF document
-    for pagenum in range(len(pdf_reader.pages) - 3):
-        page = pdf_reader.pages[pagenum]
-        pdf_writer.add_page(page)
-
-    # Save the preprocessed PDF document to the same filename
-    with open(local_pdf, 'wb') as new_file:
-        new_file.seek(0)
-        pdf_writer.write(new_file)
-        new_file.truncate()
-
-# Split the PDF documents into smaller chunks of text
-text_splitter = RecursiveCharacterTextSplitter(
-    # Set a really small chunk size, just to show.
-    chunk_size=1000,
-    chunk_overlap=100,
-)
-
 documents = []
 
-docs = text_splitter.split_documents(documents)
+for idx, file in enumerate(filenames):
+    loader = PyPDFLoader(os.path.join(data_root, file))
+    document = loader.load()
+    for document_fragment in document:
+        document_fragment.metadata = metadata[idx]
+        
+    print(f'{len(document)} {document}\n')
+    documents += document
 
+# - in our testing Character split works better with this PDF data set
+text_splitter = RecursiveCharacterTextSplitter(
+    # Set a really small chunk size, just to show.
+    chunk_size = 1000,
+    chunk_overlap  = 100,
+)
+
+docs = text_splitter.split_documents(documents)
 # Import necessary libraries
 import os
 import boto3
@@ -101,9 +94,6 @@ token_counter = TokenCounterHandler()
 
 # Initialize BedrockEmbeddings
 embeddings = BedrockEmbeddings(model_id="amazon.titan-embed-text-v1", client=bedrock_client)
-
-# Process documents and prepare them to be converted to vectors
-docs = []
 
 # Define your document list here
 
